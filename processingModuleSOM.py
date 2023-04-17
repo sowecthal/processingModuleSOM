@@ -6,7 +6,7 @@ from lib import CoreProcessingModule
 
 def main():
     core = CoreProcessingModule()
-    core.runServe(2828)
+    core.runServe(80)
 
 if __name__ == '__main__':
     main()
