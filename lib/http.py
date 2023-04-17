@@ -43,14 +43,14 @@ class Request():
 
         while b"\r\n\r\n" not in received_data:
             received_data = await self.connection.receive_some(1024)
-            print(received_data)
             bytestream.write(received_data)
+            print(bytestream.getvalue())
         
         headers, _, content = bytestream.getvalue().partition(b"\r\n\r\n")
         self.method, self.path, self.headers = self.parseHeaders(headers)
 
         content_length = int(self.headers.get("content-length", 0))
-        with trio.move_on_after(10):
+        with trio.move_on_after(2):
             if content_length:
                 size = len(content)
                 bytestream = io.BytesIO()
@@ -116,5 +116,4 @@ class Response():
         self.header = bytestream.getvalue()
 
     async def send(self):
-        print(to_bytes(self.header))
         await self.connection.send_all(to_bytes(self.header))

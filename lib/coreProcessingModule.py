@@ -26,10 +26,8 @@ class CoreProcessingModule:
             method, path, headers, data = request.getParams()
             print(method, path, headers, data)
         except HTTPError as e:
-            print('тут')
             response.status = e
             response.buildHeaders()
-            print(response.header)
             await response.send()
 
     async def _serve(self, port: int):
