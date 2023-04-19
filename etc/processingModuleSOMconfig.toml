@@ -1,3 +1,7 @@
 #   Online Mastering Service's Processing Module configuration file
 [MAIN]
-port = 2828
+port = 80
+
+[LOG]
+file = './var/log/processingModuleSOM.log'
+level = 'DEBUG' # May be INFO, DEBUG or ERROR
