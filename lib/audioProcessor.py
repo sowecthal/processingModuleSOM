@@ -4,7 +4,10 @@ from scipy import signal
 import numpy as np
 
 def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float):
-    rate, data = wavfile.read(path) 
+    audio = AudioSegment.from_file(path, format=path.split('.')[-1])
+    rate = audio.frame_rate
+    data = np.array(audio.get_array_of_samples())
+    
     low = 200   
     high = 5000
 
@@ -22,7 +25,7 @@ def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float):
 
     output_signal = low_signal + mid_signal + high_signal
     #output_signal = np.int16(output_signal / np.max(np.abs(output_signal)) * 32767)
-    output_signal = AudioSegment(output_signal.tobytes(), frame_rate=rate, sample_width=2, channels=1)
+    output_signal = AudioSegment(output_signal.tobytes(), frame_rate=rate)
 
     output_signal.export(path, format=path.split('.')[-1])
 
