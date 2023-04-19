@@ -4,41 +4,36 @@ from scipy import signal
 import numpy as np
 
 def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float):
-    
     rate, data = wavfile.read(path) 
-    # rate -  частота дискретизации (Гц),
-    # data -  массив значений амплитуд звукового сигнала, представленных в виде целых чисел.
+    low = 200   
+    high = 5000
+
+    b_low, a_low = signal.butter(6, low, 'lowpass', fs=rate)
+    b_mid, a_mid = signal.butter(6, [low, high], 'bandpass', fs=rate)
+    b_high, a_high = signal.butter(6, high, 'highpass', fs=rate)
     
-    freq, fft = signal.periodogram(data, rate)
-    # freq - массив дискретных частот
-    # fft  - массив соответствующих им амплитуд спектра.
+    low_signal = signal.filtfilt(b_low, a_low, data)
+    mid_signal = signal.filtfilt(b_mid, a_mid, data)
+    high_signal = signal.filtfilt(b_high, a_high, data)
 
-    b, a = signal.butter(6, low, 'low', fs=rate)
-    b, a = signal.butter(6, [low, high], 'bandpass', fs=rate)
-    b, a = signal.butter(6, high, 'high', fs=rate)
-    
-    low_freq = signal.filtfilt(b, a, data)
-   
+    low_signal *= low_gain
+    mid_signal *= mid_gain
+    high_signal *= high_gain
 
-
-    mid_freq = signal.filtfilt(b, a, data)
-  
-    
-
-    high_freq = signal.filtfilt(b, a, data)
-    
-    output_signal = low_freq + mid_freq + high_freq
-
+    output_signal = low_signal + mid_signal + high_signal
     output_signal = np.int16(output_signal / np.max(np.abs(output_signal)) * 32767)
+
+    output_path = output_path if output_path else path
+    output_signal = AudioSegment(output_signal.tobytes(), frame_rate=rate, sample_width=2, channels=1)
+    output_signal.export(output_path, format=output_path.split('.')[-1])
 
 def compressFile(path: str, threshold: float, ratio: float, attack=None, release=None):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
     print("RMS level before compression: ", input_signal.rms)
 
-    compressed_signal = input_signal.compress_dynamic_range(threshold=threshold, ratio=ratio, attack=attack, release=release)
-    print("RMS level after compression: ", compressed_signal.rms)
-    output_signal = compressed_signal
-
+    output_signal = input_signal.compress_dynamic_range(threshold=threshold, ratio=ratio, attack=attack, release=release)
+    print("RMS level after compression: ", output_signal.rms)
+    
     output_path = output_path if output_path else path
     output_signal.export(output_path, format=output_path.split('.')[-1])
 
