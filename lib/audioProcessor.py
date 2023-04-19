@@ -24,8 +24,8 @@ def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float):
     high_signal *= high_gain
 
     output_signal = low_signal + mid_signal + high_signal
-    #output_signal = np.int16(output_signal / np.max(np.abs(output_signal)) * 32767)
-    output_signal = AudioSegment(output_signal.tobytes(), frame_rate=rate)
+    output_signal = np.int16(output_signal / np.max(np.abs(output_signal)) * 32767)
+    output_signal = AudioSegment(output_signal.tobytes(), frame_rate=rate, sample_width=4, channels=1)
 
     output_signal.export(path, format=path.split('.')[-1])
 
