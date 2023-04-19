@@ -20,14 +20,14 @@ def normalizeFile(path: str, multiplier=None, dBFS=None):
         output_signal = input_signal.apply_gain(delta_dBFS)
         print("dBFS after normalization: ", round(output_signal.dBFS, 1))
 
-    output_path = output_path if output_path else path
-    output_signal.export(output_path, format=output_path.split('.')[-1])
+    output_signal.export(path, format=path.split('.')[-1])
 
 def byReference(path: str, ref_path: str):
     def getReferenceParams(ref_path: str) -> dict:
         params = {}
         input_signal = AudioSegment.from_file(ref_path, ref_path.split('.')[-1])
         params['dBFS'] = round(input_signal.dBFS, 1)
+        print(params['dBFS'])
         return params
 
     def applyReferenceParams(path: str, params: dict):

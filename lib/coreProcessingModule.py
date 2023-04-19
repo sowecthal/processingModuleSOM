@@ -5,10 +5,21 @@ import sys
 from .http import Headers, Request, Response, HTTPError
 from .processingTaskManager import ProcessingTaskManager
 
+class Route:
+    def __init__(self, method: str, path: str, handler):
+       self.method = method
+       self.path = path
+       self.handler = handler
+
 class CoreProcessingModule:
     def __init__(self, *, logger=None):
         self.task_manager = ProcessingTaskManager()
+        self.routes = []
+        self.api_manager = API(self) 
     
+    def addRoute(method: str, path: str, handler):
+        self.routes.append(method, path, handler)
+
     def runServe(self, port: int):
         try:
             trio.run(self._serve, port)
