@@ -15,10 +15,10 @@ def main():
         config = toml.load(file)
 
     logging.basicConfig(level=config['LOG']['level'], format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    logging.info('Start processing module')
+    logging.info('Start processing module on port %d' % config['MAIN']['port'])
 
     core = CoreProcessingModule()
-    core.runServe(80)
+    core.run(config['MAIN']['port'])
 
 if __name__ == '__main__':
     main()

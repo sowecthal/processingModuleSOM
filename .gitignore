@@ -1,2 +1,3 @@
 lib/__pycache__/
+lib/networking/__pycache__/
 *.py[cod]

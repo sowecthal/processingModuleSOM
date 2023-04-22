@@ -44,11 +44,10 @@ class Request():
         while b"\r\n\r\n" not in received_data:
             received_data = await self.connection.receive_some(1024)
             bytestream.write(received_data)
-            print(bytestream.getvalue())
         
         headers, _, content = bytestream.getvalue().partition(b"\r\n\r\n")
         self.method, self.path, self.headers = self.parseHeaders(headers)
-
+        
         content_length = int(self.headers.get("content-length", 0))
         with trio.move_on_after(2):
             if content_length:
@@ -71,7 +70,7 @@ class Request():
         headers = value.decode("utf-8").split("\r\n")
         metaheader = headers.pop(0)
         method, path, *_ = metaheader.split()
-        headers = Headers({key: value for key, value in (line.split(": ", maxsplit=1) for line in headers)})
+        headers = Headers({key.lower(): value for key, value in (line.split(": ", maxsplit=1) for line in headers)})
         return method, path, headers
 
     def getParams(self):
