@@ -3,11 +3,59 @@ from scipy.io import wavfile
 from scipy import signal
 import numpy as np
 
-def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float):
-    audio = AudioSegment.from_file(path, format=path.split('.')[-1])
-    rate = audio.frame_rate
-    data = np.array(audio.get_array_of_samples())
+convertion_funcs = {
+    'wav': AudioSegment.from_wav,
+    'mp3': AudioSegment.from_mp3,
+    'ogg': AudioSegment.from_ogg
+}
+
+class AudioProcessorError(Exception):
+    def __init__(self, message: str):
+        self.message = str(message)
     
+    def __str__(self):
+        return self.message
+        
+
+def verifyFormat(name: str):
+    if name not in convertion_funcs.keys():
+        raise AudioProcessorError("Format '%s' is not supported" % name)
+
+def workingInFormat(target_format):
+    def prepareFileForFunction(func):
+        def preparator(*args):
+            path = args[0]
+            converted_path = path
+            if path.split('.')[-1] != target_format:
+                converted_path = convertFile(path, target_format)
+            
+            returned_path = func(converted_path, *args[1:])
+            
+            if returned_path != path:
+                convertFile(returned_path, path.split('.')[-1])
+                
+        return preparator
+    return prepareFileForFunction
+  
+  
+def convertFile(path: str, output_format: str):
+    input_format = path.split('.')[-1]
+    
+    verifyFormat(input_format)
+    verifyFormat(output_format)
+    
+    new_path = path.rsplit('.', 1)[0] + '.' + output_format
+    
+    output_signal = convertion_funcs[input_format](path)
+    output_signal = output_signal.normalize()
+    output_signal.export(new_path, format=output_format)    
+    
+    return new_path
+
+@workingInFormat("wav")
+def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float): 
+    rate, data = wavfile.read(path)
+
     low = 200   
     high = 5000
 
@@ -18,16 +66,15 @@ def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float):
     low_signal = signal.filtfilt(b_low, a_low, data, padlen=0)
     mid_signal = signal.filtfilt(b_mid, a_mid, data, padlen=0)
     high_signal = signal.filtfilt(b_high, a_high, data, padlen=0)
-
+    
     low_signal *= low_gain
     mid_signal *= mid_gain
     high_signal *= high_gain
 
     output_signal = low_signal + mid_signal + high_signal
-    output_signal = np.int16(output_signal / np.max(np.abs(output_signal)) * 32767)
-    output_signal = AudioSegment(output_signal.tobytes(), frame_rate=rate, sample_width=4, channels=1)
-
-    output_signal.export(path, format=path.split('.')[-1])
+    
+    wavfile.write(path, rate, output_signal.astype(np.int16))
+    return path
 
 def compressFile(path: str, threshold: float, ratio: float, attack=5.0, release=50.0):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
@@ -37,6 +84,7 @@ def compressFile(path: str, threshold: float, ratio: float, attack=5.0, release=
     print("RMS level after compression: ", output_signal.rms)
     
     output_signal.export(path, format=path.split('.')[-1])
+    return path
 
 def normalizeFile(path: str, multiplier=None, dBFS=None):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
@@ -52,6 +100,7 @@ def normalizeFile(path: str, multiplier=None, dBFS=None):
         print("dBFS after normalization: ", round(output_signal.dBFS, 1))
 
     output_signal.export(path, format=path.split('.')[-1])
+    return path
 
 def byReference(path: str, ref_path: str):
     def getReferenceParams(ref_path: str) -> dict:
