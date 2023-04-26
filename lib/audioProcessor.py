@@ -2,6 +2,7 @@ from pydub import AudioSegment, effects
 from scipy.io import wavfile
 from scipy import signal
 import numpy as np
+import math
 
 convertion_funcs = {
     'wav': AudioSegment.from_wav,
@@ -51,6 +52,53 @@ def convertFile(path: str, output_format: str):
     output_signal.export(new_path, format=output_format)    
     
     return new_path
+
+
+def getRMSValues(path: str):
+    rate, data = wavfile.read(path)
+    
+    _, num_pieces, piece_size, last_piece_size = calculatePieceSizes(data, rate)
+    rms_values_list = calculateSegmentRMS(data, num_pieces, piece_size, last_piece_size)
+    
+    return rms_values_list
+
+    
+def calculatePieceSizes(data: np.ndarray, rate: int, max_piece_duration=15):
+    array_size = data.shape[0]
+    piece_duration = rate * max_piece_duration
+    num_pieces = math.ceil(array_size / piece_duration)
+    last_piece_size = array_size - (num_pieces - 1) * piece_duration #last piece length in samples 
+    
+    print(f"The audio file will be divided into {num_pieces} pieces.")
+    for i in range(num_pieces-1):
+        piece_start = i * piece_duration
+        print(f"Piece {i+1} starts at {piece_start / rate:.2f} seconds and ends at {piece_start / rate + max_piece_duration:.2f} seconds.")
+    
+    if last_piece_size > 0:
+        print(f"Last piece starts at {piece_start / rate + max_piece_duration:.2f} seconds and ends at {piece_start / rate + max_piece_duration + last_piece_size / rate:.2f} seconds.\n")
+    else:
+        print("The last piece has a length of 0 seconds.")
+    
+    return array_size, num_pieces, piece_duration, last_piece_size
+
+    
+def calculateSegmentRMS(data: np.ndarray, num_pieces: int, piece_size: int, last_piece_size: int):
+    rms_values = np.zeros(num_pieces)
+    
+    for i in range(num_pieces):
+        if i == num_pieces - 1 and last_piece_size > 0:
+            start = i * piece_size
+            end = start + last_piece_size
+        else:
+            start = i * piece_size
+            end = start + piece_size
+        piece = data[start:end, :]
+        piece = piece.astype(np.int32)
+        rms_values[i] = np.sqrt(np.mean(np.square(piece)))
+        print(f"The {i}th piece has an RMS of {rms_values[i]}.\n")
+    
+    return rms_values
+
 
 @workingInFormat("wav")
 def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float): 
@@ -102,15 +150,17 @@ def normalizeFile(path: str, multiplier=None, dBFS=None):
     output_signal.export(path, format=path.split('.')[-1])
     return path
 
+@workingInFormat("wav")
 def byReference(path: str, ref_path: str):
     def getReferenceParams(ref_path: str) -> dict:
-        params = {}
-        input_signal = AudioSegment.from_file(ref_path, ref_path.split('.')[-1])
-        params['dBFS'] = round(input_signal.dBFS, 1)
-        print(params['dBFS'])
-        return params
+        pass
+        # params = {}
+        # input_signal = AudioSegment.from_file(ref_path, ref_path.split('.')[-1])
+        # params['dBFS'] = round(input_signal.dBFS, 1)
+        # return params
 
     def applyReferenceParams(path: str, params: dict):
-        normalizeFile(path, dBFS=params['dBFS'])
+        pass
+        # normalizeFile(path, dBFS=params['dBFS'])
     
     applyReferenceParams(path, getReferenceParams(ref_path))
