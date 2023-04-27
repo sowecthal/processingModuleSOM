@@ -57,8 +57,8 @@ def convertFile(path: str, output_format: str):
 def getRMSValues(path: str):
     rate, data = wavfile.read(path)
     
-    _, num_pieces, piece_size, last_piece_size = calculatePieceSizes(data, rate)
-    rms_values_list = calculateSegmentRMS(data, num_pieces, piece_size, last_piece_size)
+    *_, pieces = calculatePieceSizes(data, rate)
+    rms_values_list = calculateSegmentRMS(data, pieces)
     
     return rms_values_list
 
@@ -68,36 +68,63 @@ def calculatePieceSizes(data: np.ndarray, rate: int, max_piece_duration=15):
     piece_duration = rate * max_piece_duration
     num_pieces = math.ceil(array_size / piece_duration)
     last_piece_size = array_size - (num_pieces - 1) * piece_duration #last piece length in samples 
-    
-    print(f"The audio file will be divided into {num_pieces} pieces.")
+
+    print(f"\nThe audio file will be divided into {num_pieces} pieces.")
+    pieces = []
     for i in range(num_pieces-1):
         piece_start = i * piece_duration
-        print(f"Piece {i+1} starts at {piece_start / rate:.2f} seconds and ends at {piece_start / rate + max_piece_duration:.2f} seconds.")
-    
+        piece_end = piece_start + piece_duration
+        pieces.append((piece_start, piece_end))
+        print(f"Piece {i+1} starts at {piece_start / rate:.2f} seconds and ends at {piece_end / rate:.2f} seconds.")
+
     if last_piece_size > 0:
-        print(f"Last piece starts at {piece_start / rate + max_piece_duration:.2f} seconds and ends at {piece_start / rate + max_piece_duration + last_piece_size / rate:.2f} seconds.\n")
+        piece_start = (num_pieces-1) * piece_duration
+        piece_end = piece_start + last_piece_size
+        pieces.append((piece_start, piece_end))
+        print(f"Last piece starts at {piece_start / rate:.2f} seconds and ends at {piece_end / rate:.2f} seconds.\n")
     else:
         print("The last piece has a length of 0 seconds.")
-    
-    return array_size, num_pieces, piece_duration, last_piece_size
 
+    return array_size, num_pieces, piece_duration, last_piece_size, pieces
+
+
+def calculateSegmentRMS(data: np.ndarray, pieces):
+    rms_values = np.zeros(len(pieces))
     
-def calculateSegmentRMS(data: np.ndarray, num_pieces: int, piece_size: int, last_piece_size: int):
-    rms_values = np.zeros(num_pieces)
-    
-    for i in range(num_pieces):
-        if i == num_pieces - 1 and last_piece_size > 0:
-            start = i * piece_size
-            end = start + last_piece_size
-        else:
-            start = i * piece_size
-            end = start + piece_size
-        piece = data[start:end, :]
-        piece = piece.astype(np.int32)
-        rms_values[i] = np.sqrt(np.mean(np.square(piece)))
+    for i, piece in enumerate(pieces):
+        start, end = piece
+        piece_data = data[start:end, :]
+        piece_data = piece_data.astype(np.int32)
+        rms_values[i] = np.sqrt(np.mean(np.square(piece_data)))
         print(f"The {i}th piece has an RMS of {rms_values[i]}.\n")
     
     return rms_values
+
+def calculateCoefficientAndAmplify(target_average: float, ref_average: float, target_greater_rms_values: dict):
+    rms_coefficient = ref_average / target_average
+    print(f"The RMS coefficient is: {rms_coefficient}")
+    
+    amplified_target_rms_values = {inx: val * rms_coefficient for inx, val in target_greater_rms_values.items()}
+    print(amplified_target_rms_values)
+
+def modifyRMS(targ_path, ref_path):
+    if targ_path:
+        target_rms_values = getRMSValues(targ_path)
+        target_average = np.mean(target_rms_values)
+        print(f"Target average RMS is {target_average}.")
+        target_rms_dict = {inx: val for inx, val in enumerate(target_rms_values)}
+        target_greater_rms_values = {inx: val for inx, val in enumerate(target_rms_values) if val>target_average}
+        print(target_rms_dict)
+        print(target_greater_rms_values)
+    
+    if ref_path:
+        ref_rms_values = getRMSValues(ref_path)
+        ref_average = np.mean(ref_rms_values)
+        print(f"Reference average RMS is {ref_average}.")
+        ref_greater_rms_values = {inx: val for inx, val in enumerate(ref_rms_values) if val>ref_average}
+        print(ref_greater_rms_values)
+    
+    calculateCoefficientAndAmplify(target_average, ref_average, target_greater_rms_values)
 
 
 @workingInFormat("wav")
