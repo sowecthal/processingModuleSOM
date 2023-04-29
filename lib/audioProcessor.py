@@ -37,8 +37,8 @@ def workingInFormat(target_format):
                 
         return preparator
     return prepareFileForFunction
-  
-  
+
+
 def convertFile(path: str, output_format: str):
     input_format = path.split('.')[-1]
     
@@ -54,15 +54,6 @@ def convertFile(path: str, output_format: str):
     return new_path
 
 
-def getRMSValues(path: str):
-    rate, data = wavfile.read(path)
-    
-    *_, pieces = calculatePieceSizes(data, rate)
-    rms_values_list = calculateSegmentRMS(data, pieces)
-    
-    return rms_values_list
-
-    
 def calculatePieceSizes(data: np.ndarray, rate: int, max_piece_duration=15):
     array_size = data.shape[0]
     piece_duration = rate * max_piece_duration
@@ -70,61 +61,95 @@ def calculatePieceSizes(data: np.ndarray, rate: int, max_piece_duration=15):
     last_piece_size = array_size - (num_pieces - 1) * piece_duration #last piece length in samples 
 
     print(f"\nThe audio file will be divided into {num_pieces} pieces.")
-    pieces = []
+    pieces_borders = []
     for i in range(num_pieces-1):
         piece_start = i * piece_duration
         piece_end = piece_start + piece_duration
-        pieces.append((piece_start, piece_end))
+        pieces_borders.append((piece_start, piece_end))
         print(f"Piece {i+1} starts at {piece_start / rate:.2f} seconds and ends at {piece_end / rate:.2f} seconds.")
 
     if last_piece_size > 0:
         piece_start = (num_pieces-1) * piece_duration
         piece_end = piece_start + last_piece_size
-        pieces.append((piece_start, piece_end))
+        pieces_borders.append((piece_start, piece_end))
         print(f"Last piece starts at {piece_start / rate:.2f} seconds and ends at {piece_end / rate:.2f} seconds.\n")
     else:
         print("The last piece has a length of 0 seconds.")
 
-    return array_size, num_pieces, piece_duration, last_piece_size, pieces
+    return array_size, num_pieces, piece_duration, last_piece_size, pieces_borders
 
 
-def calculateSegmentRMS(data: np.ndarray, pieces):
-    rms_values = np.zeros(len(pieces))
+def getSegments(data: np.ndarray, pieces_borders: list) -> dict:
+    segments = {}
+    for i, piece_borders in enumerate(pieces_borders):
+        start, end = piece_borders
+        segments[i] = data[start:end, :]
     
-    for i, piece in enumerate(pieces):
-        start, end = piece
-        piece_data = data[start:end, :]
-        piece_data = piece_data.astype(np.int32)
-        rms_values[i] = np.sqrt(np.mean(np.square(piece_data)))
+    return segments
+    
+
+def calculateSegmentsRMS(segments: dict):
+    rms_values = np.zeros(len(segments.keys()))
+    
+    for i, segment in enumerate(list(segments.values())): 
+        segment_data = segment.astype(np.int32)
+        rms_values[i] = np.sqrt(np.mean(np.square(segment_data)))
         print(f"The {i}th piece has an RMS of {rms_values[i]}.\n")
     
     return rms_values
 
-def calculateCoefficientAndAmplify(target_average: float, ref_average: float, target_greater_rms_values: dict):
+
+def calculateCoefficientAndAmplify(target_average: float, ref_average: float, target_greater_rms_values: dict, target_segments: dict):
     rms_coefficient = ref_average / target_average
-    print(f"The RMS coefficient is: {rms_coefficient}")
+    print(f"\nThe RMS coefficient is: {rms_coefficient}")
     
-    amplified_target_rms_values = {inx: val * rms_coefficient for inx, val in target_greater_rms_values.items()}
-    print(amplified_target_rms_values)
+    for key in target_greater_rms_values.keys():
+        target_segments[key] = target_segments[key] * rms_coefficient
+    print(f"Greater than average target RMS after amplifying are {target_segments}")
+
 
 def modifyRMS(targ_path, ref_path):
     if targ_path:
-        target_rms_values = getRMSValues(targ_path)
+        rate, data = wavfile.read(targ_path)
+        *_, pieces_borders = calculatePieceSizes(data, rate)
+        target_segments = getSegments(data, pieces_borders)
+        
+        target_rms_values = calculateSegmentsRMS(target_segments)
+        
         target_average = np.mean(target_rms_values)
-        print(f"Target average RMS is {target_average}.")
+        print(f"Average target RMS is {target_average}.")
+        
         target_rms_dict = {inx: val for inx, val in enumerate(target_rms_values)}
+        print(f"Initial target RMS are {target_rms_dict}")
+        
         target_greater_rms_values = {inx: val for inx, val in enumerate(target_rms_values) if val>target_average}
-        print(target_rms_dict)
-        print(target_greater_rms_values)
+        print(f"Greater than average target RMS are {target_greater_rms_values}")
+        
+        target_greater_average = np.mean(list(target_greater_rms_values.values()))
+        print(f"Average of greater than average target RMS are {target_greater_average}")
     
     if ref_path:
-        ref_rms_values = getRMSValues(ref_path)
+        rate, data = wavfile.read(ref_path)
+        *_, pieces_borders = calculatePieceSizes(data, rate)
+        ref_segments = getSegments(data, pieces_borders)
+        
+        ref_rms_values = calculateSegmentsRMS(ref_segments)
+        
         ref_average = np.mean(ref_rms_values)
         print(f"Reference average RMS is {ref_average}.")
+        
+        ref_rms_dict = {inx: val for inx, val in enumerate(ref_rms_values)}
+        print(f"Initial reference RMS are {ref_rms_dict}")
+        
         ref_greater_rms_values = {inx: val for inx, val in enumerate(ref_rms_values) if val>ref_average}
-        print(ref_greater_rms_values)
+        print(f"Greater than average reference RMS are {ref_greater_rms_values}")
+        
+        ref_greater_average = np.mean(list(ref_greater_rms_values.values()))
+        print(f"Average of greater than average reference RMS are {ref_greater_average}")
     
-    calculateCoefficientAndAmplify(target_average, ref_average, target_greater_rms_values)
+    print(f"Greater than average target RMS before amplifying are {target_segments}")
+
+    calculateCoefficientAndAmplify(target_greater_average, ref_greater_average, target_greater_rms_values, target_segments)
 
 
 @workingInFormat("wav")
