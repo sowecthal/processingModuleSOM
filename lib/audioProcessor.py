@@ -54,6 +54,7 @@ def convertFile(path: str, output_format: str):
     return new_path
 
 
+
 def calculatePieceSizes(data: np.ndarray, rate: int, max_piece_duration=15):
     array_size = data.shape[0]
     piece_duration = rate * max_piece_duration
@@ -150,6 +151,7 @@ def modifyRMS(targ_path, ref_path):
     print(f"Greater than average target RMS before amplifying are {target_segments}")
 
     calculateCoefficientAndAmplify(target_greater_average, ref_greater_average, target_greater_rms_values, target_segments)
+
 
 
 @workingInFormat("wav")
