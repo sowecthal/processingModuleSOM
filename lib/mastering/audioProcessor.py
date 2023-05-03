@@ -4,6 +4,8 @@ from scipy import signal
 import numpy as np
 import math
 
+import soundfile as sf
+import validator
 import audioProcessorUtils as apu
 
 convertion_funcs = {
@@ -110,17 +112,35 @@ def normalizeFile(path: str, multiplier=None, dBFS=None):
     return path
 
 
-@__workingInFormat("wav")
 def byReference(targ_path: str, ref_path: str):
-    targ_rate, targ_data = wavfile.read(targ_path)
-    ref_rate, ref_data = wavfile.read(ref_path)
     
+    targ_data, targ_rate  = sf.read(targ_path, always_2d=True)
+    ref_data, ref_rate = sf.read(ref_path, always_2d=True)
+
+    targ_data, targ_rate = validator.check(targ_data, targ_rate)
+    ref_data, ref_rate = validator.check(ref_data, ref_rate)
+
     targ_mid, targ_side = apu.convertFromLeftRightToMidSide(targ_data) 
     targ_pieces_quantity, targ_piece_size = apu.calculatePiecesParams(targ_mid, targ_rate)
     targ_loudest_RMS, targ_mid_loudest_pieces, targ_side_loudest_pieces = apu.getLoudestMidSidePieces(targ_mid, targ_side, targ_pieces_quantity, targ_piece_size)
+
+    print(targ_pieces_quantity, targ_piece_size)
 
     ref_mid, ref_side = apu.convertFromLeftRightToMidSide(ref_data) 
     ref_pieces_quantity, ref_piece_size = apu.calculatePiecesParams(ref_mid, ref_rate)
     ref_loudest_RMS, ref_mid_loudest_pieces, ref_side_loudest_pieces = apu.getLoudestMidSidePieces(ref_mid, ref_side, ref_pieces_quantity, ref_piece_size)
 
-    
+    print(ref_pieces_quantity, ref_piece_size)
+
+    rms_coefficient, targ_mid, targ_side = apu.calculateCoefficientAndAmplify(targ_mid, targ_side, targ_loudest_RMS, ref_loudest_RMS)    
+
+    targ_mid_loudest_pieces *= rms_coefficient
+    targ_side_loudest_pieces *= rms_coefficient
+
+    mid_fir = apu.getFIR(targ_mid_loudest_pieces, ref_mid_loudest_pieces)
+    side_fir = apu.getFIR(targ_side_loudest_pieces, ref_side_loudest_pieces)
+
+    result, result_mid = apu.convolve(targ_mid, mid_fir, targ_side, side_fir)
+
+    sf.write(targ_path, result, targ_rate)
+
