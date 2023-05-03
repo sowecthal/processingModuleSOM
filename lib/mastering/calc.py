@@ -4,7 +4,7 @@ from scipy import signal
 import numpy as np
 import math
 import statsmodels.api as sm
-#from freqamp import getFIR, convolve
+from freqamp import getFIR, convolve
     
 def calculatePieceSizes(data: np.ndarray, rate: int, max_piece_duration=15):
     array_size = data.shape[0]
