@@ -3,7 +3,6 @@ from scipy.io import wavfile
 from scipy import signal
 import numpy as np
 import math
-
 import soundfile as sf
 import validator
 import audioProcessorUtils as apu
@@ -111,7 +110,6 @@ def normalizeFile(path: str, multiplier=None, dBFS=None):
     output_signal.export(path, format=path.split('.')[-1])
     return path
 
-
 def byReference(targ_path: str, ref_path: str):
     
     targ_data, targ_rate  = sf.read(targ_path, always_2d=True)
@@ -142,5 +140,14 @@ def byReference(targ_path: str, ref_path: str):
 
     result, result_mid = apu.convolve(targ_mid, mid_fir, targ_side, side_fir)
 
-    sf.write(targ_path, result, targ_rate)
+    for rms_step in range(1, 5):
+        result_clipped = np.clip(result_mid, -1.0, 1.0)
 
+        targ_loudest_RMS, *_ = apu.getLoudestMidSidePieces(result_clipped, targ_side, targ_pieces_quantity, targ_piece_size)
+        _, result_mid, result = apu.calculateCoefficientAndAmplify(result_mid, result, targ_loudest_RMS, ref_loudest_RMS)
+
+    sf.write(targ_path.rsplit('.', 1)[0] + '_mastered.' + targ_path.split('.')[-1], result, targ_rate)
+
+
+if __name__ == '__main__':
+    byReference('s.mp3', 'm.wav')

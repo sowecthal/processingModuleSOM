@@ -60,13 +60,13 @@ def getLoudestMidSidePieces(mid: np.ndarray, side: np.ndarray, quantity: int, pi
     return loudest_average_RMS, mid_loudest_pieces, side_loudest_pieces
 
 
-def calculateCoefficientAndAmplify(data_mid: np.ndarray, data_side: np.ndarray, target_main_match_rms: float, reference_match_rms: float) -> (float, np.ndarray, np.ndarray):
+def calculateCoefficientAndAmplify(data_main: np.ndarray, data_additional: np.ndarray, target_main_match_rms: float, reference_match_rms: float) -> (float, np.ndarray, np.ndarray):
     rms_coefficient = reference_match_rms / target_main_match_rms
 
-    data_mid = data_mid * rms_coefficient
-    data_side = data_side * rms_coefficient
+    data_main = data_main * rms_coefficient
+    data_additional = data_additional * rms_coefficient
 
-    return rms_coefficient, data_mid, data_side
+    return rms_coefficient, data_main, data_additional
 
 
 def smoothLowess(fft_data: np.ndarray, frac = 0.0375, it = 0, delta = 0.001) -> np.ndarray:
