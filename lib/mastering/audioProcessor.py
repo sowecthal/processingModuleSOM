@@ -142,9 +142,8 @@ def byReference(targ_path: str, ref_path: str):
 
     for rms_step in range(1, 5):
         result_clipped = np.clip(result_mid, -1.0, 1.0)
-
         targ_loudest_RMS, *_ = apu.getLoudestMidSidePieces(result_clipped, targ_side, targ_pieces_quantity, targ_piece_size)
-        _, result_mid, result = apu.calculateCoefficientAndAmplify(result_mid, result, targ_loudest_RMS, ref_loudest_RMS)
+        *_, result = apu.calculateCoefficientAndAmplify(result_mid, result, targ_loudest_RMS, ref_loudest_RMS)
 
     sf.write(targ_path.rsplit('.', 1)[0] + '_mastered.' + targ_path.split('.')[-1], result, targ_rate)
 
