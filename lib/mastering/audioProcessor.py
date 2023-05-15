@@ -2,7 +2,6 @@ from pydub import AudioSegment, effects
 from scipy.io import wavfile
 from scipy import signal
 import numpy as np
-import math
 import soundfile as sf
 import validator
 import audioProcessorUtils as apu
@@ -37,7 +36,7 @@ def __convertFile(path: str, output_format: str):
     output_signal = convertion_funcs[input_format](path)
     output_signal = output_signal.normalize()
     output_signal.export(new_path, format=output_format)    
-    
+  
     return new_path
 
 
@@ -59,38 +58,52 @@ def __workingInFormat(target_format):
 
 
 @__workingInFormat("wav")
-def equalizeFile(path: str, low_gain: float, mid_gain: float, high_gain: float): 
+def equalizeFile(path: str, eq_dict: dict ): #test dictionary = {200: 10, 1000: -10, 5000: -10}
     rate, data = wavfile.read(path)
 
-    low = 200   
-    high = 5000
+    # If the file is stereo
+    if len(data.shape) > 1 and data.shape[1] > 1:
+        data_left = data[:, 0]
+        data_right = data[:, 1]
+    else:
+        data_left = data_right = data
 
-    b_low, a_low = signal.butter(6, low, 'lowpass', fs=rate)
-    b_mid, a_mid = signal.butter(6, [low, high], 'bandpass', fs=rate)
-    b_high, a_high = signal.butter(6, high, 'highpass', fs=rate)
+    output_signal_left = np.array(data_left, dtype=np.float64)
+    output_signal_right = np.array(data_right, dtype=np.float64)
 
-    low_signal = signal.filtfilt(b_low, a_low, data, padlen=0)
-    mid_signal = signal.filtfilt(b_mid, a_mid, data, padlen=0)
-    high_signal = signal.filtfilt(b_high, a_high, data, padlen=0)
-    
-    low_signal *= low_gain
-    mid_signal *= mid_gain
-    high_signal *= high_gain
+    for freq in eq_dict.keys():
+        gain_db = eq_dict[freq]
+        gain = 10**(gain_db/20) # Convert from dB to linear
 
-    output_signal = low_signal + mid_signal + high_signal
-    
-    wavfile.write(path, rate, output_signal.astype(np.int16))
+        b, a = signal.butter(2, [0.9*freq, 1.1*freq], 'bandpass', fs=rate)
+
+        band_left = signal.filtfilt(b, a, data_left)
+        band_right = signal.filtfilt(b, a, data_right)
+
+        output_signal_left += gain * band_left - band_left
+        output_signal_right += gain * band_right - band_right
+
+    output_signal_left /= np.max(np.abs(output_signal_left))
+    output_signal_right /= np.max(np.abs(output_signal_right))
+
+    output_signal = np.vstack((output_signal_left, output_signal_right)).T
+
+    output_signal = np.int16(output_signal * 32767)
+
+    wavfile.write(path.rsplit('.', 1)[0] + '_eq.' + path.split('.')[-1], rate, output_signal)
+
     return path
 
-
-def compressFile(path: str, threshold: float, ratio: float, attack=5.0, release=50.0):
+@__workingInFormat("wav")
+def compressFile(path: str, threshold = -20.0, ratio = 4.0, attack = 5.0, release = 50.0):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
     print("RMS level before compression: ", input_signal.rms)
 
     output_signal = input_signal.compress_dynamic_range(threshold=threshold, ratio=ratio, attack=attack, release=release)
     print("RMS level after compression: ", output_signal.rms)
     
-    output_signal.export(path, format=path.split('.')[-1])
+    output_signal.export(path.rsplit('.', 1)[0] + '_comp.'+ path.split('.')[-1])
+
     return path
 
 
@@ -107,7 +120,8 @@ def normalizeFile(path: str, multiplier=None, dBFS=None):
         output_signal = input_signal.apply_gain(delta_dBFS)
         print("dBFS after normalization: ", round(output_signal.dBFS, 1))
 
-    output_signal.export(path, format=path.split('.')[-1])
+    output_signal.export(path.rsplit('.', 1)[0] + '_norm.'+ path.split('.')[-1])
+    
     return path
 
 def byReference(targ_path: str, ref_path: str):
@@ -148,5 +162,3 @@ def byReference(targ_path: str, ref_path: str):
     sf.write(targ_path.rsplit('.', 1)[0] + '_mastered.' + targ_path.split('.')[-1], result, targ_rate)
 
 
-if __name__ == '__main__':
-    byReference('s.mp3', 'm.wav')
