@@ -1,6 +1,6 @@
 #   Online Mastering Service's Processing Module configuration file
 [MAIN]
-port = 80
+port = 8080
 
 [LOG]
 file = './var/log/processingModuleSOM.log'

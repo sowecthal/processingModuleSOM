@@ -1,16 +1,19 @@
 from pydub import AudioSegment, effects
 from scipy.io import wavfile
 from scipy import signal
-import numpy as np
 import soundfile as sf
+import numpy as np
+
 import validator
 import audioProcessorUtils as apu
+
 
 convertion_funcs = {
     'wav': AudioSegment.from_wav,
     'mp3': AudioSegment.from_mp3,
     'ogg': AudioSegment.from_ogg
 }
+
 
 class AudioProcessorError(Exception):
     def __init__(self, message: str):
@@ -94,6 +97,7 @@ def equalizeFile(path: str, eq_dict: dict ): #test dictionary = {200: 10, 1000: 
 
     return path
 
+
 @__workingInFormat("wav")
 def compressFile(path: str, threshold = -20.0, ratio = 4.0, attack = 5.0, release = 50.0):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
@@ -123,6 +127,7 @@ def normalizeFile(path: str, multiplier=None, dBFS=None):
     output_signal.export(path.rsplit('.', 1)[0] + '_norm.'+ path.split('.')[-1])
     
     return path
+
 
 def byReference(targ_path: str, ref_path: str):
     
