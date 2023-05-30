@@ -1,16 +1,16 @@
 import trio
 import json
-import re
 
 
 class HttpServer:
+    routes = {}
+
     def __init__(self, task_manager, config, logger):
         self.task_manager = task_manager
         self.logger = logger
-        self.config = config
-        self.routes = {}
+        self.config = config 
 
-
+    @classmethod 
     def route(self, method, path):
         def decorator(f):
             self.routes[(method, path)] = f
@@ -41,11 +41,11 @@ class HttpServer:
                 elif route_part != path_part:
                     break
             else:
-                await handler(stream, path_args, body)
+                await handler(self, stream, path_args, body)
                 return
 
         await stream.send_all(b'HTTP/1.0 404 Not Found\r\n\r\n')
 
 
     async def run(self):
-        await trio.serve_tcp(self.handle_request, 8000)
+        await trio.serve_tcp(self.handle_request, self.config['MAIN']['port'])

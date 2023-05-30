@@ -7,12 +7,9 @@ from .http import HttpServer
 from .taskManager import TaskManager
 from .task import Task
 
-task_manager = TaskManager()
-server = HttpServer(task_manager)
 
-
-@server.route('POST', '/startProc')
-async def start_task(stream, path_args: dict = {}, body: str = ''): 
+@HttpServer.route('POST', '/startProc')
+async def start_task(server, stream, path_args: dict = {}, body: str = ''): 
     try:
         body_dict = json.loads(body)
     except json.JSONDecodeError:
@@ -20,17 +17,25 @@ async def start_task(stream, path_args: dict = {}, body: str = ''):
         return
 
     task = Task(dict())
-    await task_manager.new_tasks_queue.put(task)
-    await stream.send_all("HTTP/1.0 200 OK\r\n\r\n{'task_id': %s}\n" % task.id)
+    await server.task_manager.new_tasks_queue.put(task)
 
-@server.route('GET', '/getProcInfo/{id}')
-async def get_task_info(stream, path_args: dict = {}, body: str = ''):
-    status = task_manager.get_task_status(task_id)
+    await stream.send_all(f'HTTP/1.0 200 OK\r\n\r\n{task.id}\n'.encode('utf-8'))
+
+
+@HttpServer.route('GET', '/getProcInfo/{id}')
+async def get_task_info(server, stream, path_args: dict = {}, body: str = ''):
+    status = server.task_manager.get_task_status(path_args['id'])
     await stream.send_all(f'HTTP/1.0 200 OK\r\n\r\nTask Status: {status}\n'.encode('utf-8'))
 
 
-async def run():
-    async with trio.open_nursery() as nursery:
-        nursery.start_soon(server.run)
-        nursery.start_soon(task_manager.process_tasks)
+class Core:
+    def __init__(self, config, logger):
+        self.task_manager = TaskManager()
+        self.server = HttpServer(self.task_manager, config, logger)
+
+
+    async def run(self):
+        async with trio.open_nursery() as nursery:
+            nursery.start_soon(self.server.run)
+            nursery.start_soon(self.task_manager.process_tasks)
 

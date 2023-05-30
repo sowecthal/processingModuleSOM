@@ -3,12 +3,13 @@
 import logging
 import argparse
 import toml
+import trio
 
 from lib import core 
 
 def main():
     args_parser = argparse.ArgumentParser(prog='processingModuleSOM.py', description='Online mastering service. Processing module')
-    args_parser.add_argument('-c', '--config', type=str, default='./etc/processingModuleSOMconfig.tom')
+    args_parser.add_argument('-c', '--config', type=str, default='etc/processingModuleSOMconfig.toml')
     args = args_parser.parse_args()
 
     with open(args.config, 'r') as file:
@@ -17,7 +18,8 @@ def main():
     logging.basicConfig(level=config['LOG']['level'], format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.info('Start processing module')
 
-    core.run()
+    new_core = core.Core(config, logging) 
+    trio.run(new_core.run)
 
 if __name__ == '__main__':
     main()
