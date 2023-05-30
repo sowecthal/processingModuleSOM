@@ -1,4 +1,3 @@
-from collections import defaultdict
 import trio
 import os
 
@@ -24,10 +23,10 @@ class Queue:
 
 
 class TaskManager:
-    def __init__(self):
-        self.tasks = defaultdict(Task)
+    def __init__(self): # TODO: Не забыть про логгер
+        self.tasks = dict()
         self.new_tasks_queue = Queue()
-        
+
 
     async def process_tasks(self):
         while True:
