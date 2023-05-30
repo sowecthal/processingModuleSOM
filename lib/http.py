@@ -1,7 +1,6 @@
 import trio
-from collections import defaultdict
-from trio.lowlevel import ParkingLot
 import json
+import re
 
 
 class HttpServer:
@@ -11,25 +10,42 @@ class HttpServer:
         self.config = config
         self.routes = {}
 
+
     def route(self, method, path):
         def decorator(f):
             self.routes[(method, path)] = f
             return f
         return decorator
 
+
     async def handle_request(self, stream):
         data = await stream.receive_some(1024)
         headers, body = data.decode('utf-8').split('\r\n\r\n', 1)
 
         method, path, _ = headers.split('\r\n')[0].split(' ', 2)
-        path = path.split('/')[1]
-        handler = self.routes.get((method, path))
+        path = path.split('/')[1:]
+        path_args = {}
 
-        if handler:
-            task_id = body.strip() if method == 'POST' else path.split('/')[-1]
-            await handler(self.task_manager, stream, task_id)
-        else:
-            await stream.send_all(b'HTTP/1.0 404 Not Found\r\n\r\n')
+        for route, handler in self.routes.items():
+            route_method, route_path = route
+            if method != route_method:
+                continue
+
+            route_path_parts = route_path.split('/')[1:]
+            if len(path) != len(route_path_parts):
+                continue
+
+            for route_part, path_part in zip(route_path_parts, path):
+                if route_part.startswith('{') and route_part.endswith('}'):
+                    path_args[route_part[1:-1]] = path_part
+                elif route_part != path_part:
+                    break
+            else:
+                await handler(stream, path_args, body)
+                return
+
+        await stream.send_all(b'HTTP/1.0 404 Not Found\r\n\r\n')
+
 
     async def run(self):
         await trio.serve_tcp(self.handle_request, 8000)
