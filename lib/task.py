@@ -3,6 +3,7 @@ import trio
 import uuid
 import os
 
+
 class Task:
     def __init__(self, subtasks: dict, config: dict, logger=None):
         self.id = uuid.uuid4().hex
@@ -10,21 +11,27 @@ class Task:
         self.subtasks = subtasks
         self.config = config
         self.logger = logger if logger else logging.getLogger(f'TASK_{self.id}')
+        self.workspace = os.path.join(self.config['MAIN']['workspace'], f'{self.id}')
+         
+        os.makedirs(self.workspace)
+        self.logger.debug('Created directory')
+        self.logger.info('Schedule: '+ (', '.join(self.subtasks.keys())))
 
-        self.logger.info("I'm created")
 
-        os.makedirs(self.config['MAIN']['workspace'], exist_ok=True)
+    async def downloadSubtask(self):
+        # TODO: В зависимости от параметра self.config['MAIN']['location'] 
+        # копировать или скачивать файл(-ы) из subtasks["download"]. Файлы называть
+        # <self.id>_targ.<ext> и <self.id>_ref.<ext>.
+        pass
 
-        # TODO: Передавать сюда также нужные URL и PATH
-        # TODO: Придумать как обрабатывать subtasks и как они должны выглядеть.
-        # TODO: Создавать папку с именем равным id задачи в ../var/workspace.
 
-    async def downloadFile(self):
-        self.file_path = os.path.join(self.directory, f'{self.id}')
-        # TODO: В эту папку скачивать(копировать) файл, называть его id задачи. PATH файла записать в self.ПЕРЕМЕННУЮ
+    async def finalSubtask(self):
+        # TODO: Вызывать callback URL
+        pass
+
 
     async def run(self):
-        await trio.sleep(7)
-        self.status = "Processing"
+        await self.downloadSubtask()
+        self.status = "Downloaded"
         await trio.sleep(7)
         self.status = "Completed"

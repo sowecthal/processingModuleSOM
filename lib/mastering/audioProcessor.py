@@ -98,7 +98,7 @@ def equalizeFile(path: str, eq_dict: dict ): #test dictionary = {200: 10, 1000: 
 
 
 @__workingInFormat("wav")
-def compressFile(path: str, threshold = -20.0, ratio = 4.0, attack = 5.0, release = 50.0):
+def compressFile(path: str, *, threshold = -20.0, ratio = 4.0, attack = 5.0, release = 50.0):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
     output_signal = input_signal.compress_dynamic_range(threshold=threshold, ratio=ratio, attack=attack, release=release)
     output_signal.export(path.rsplit('.', 1)[0] + '_comp.'+ path.split('.')[-1])

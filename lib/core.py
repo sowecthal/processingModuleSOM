@@ -14,12 +14,41 @@ async def startTask(server, stream, path_args: dict = {}, body: str = ''):
     try:
         body_dict = json.loads(body)
     except json.JSONDecodeError:
-        await stream.send_all(b'HTTP/1.0 400 Bad request\r\n\r\nJSON load error\n')
+        await stream.send_all(b'HTTP/1.0 400 Bad Request\r\n\r\nJSON load error\n')
         return
     
-    # TODO: Обрабатывать JSON, он хранится в переменной body_dict
-    subtasks = {}
-    task = Task(subtasks, server.config, server.logger) # TODO: Вместо пустого dict() - передавать словарь подзадач
+    subtasks = dict()
+
+    subtasks['download'] = {'target': body_dict.get('targetTrack')}
+    callback = body_dict.get('callbackURL')
+
+    if (not subtasks['download']['target'] or not callback or
+        'masteringOperations' not in body_dict.keys()):
+        await stream.send_all(b'HTTP/1.0 400 Bad Request\r\n\r\nJSON is incorrect\n')
+        return
+    
+    find = lambda opers, key: next((item for item in opers if item['type'] == key), None)
+
+    try:
+        if reference:=find(body_dict['masteringOperations'], 'reference'):
+            subtasks['download'] = {'reference': reference['params']['referenceTrack']}
+            subtasks['reference'] = True
+        else:
+            if equalize:=find(body_dict['masteringOperations'], 'equalize'):
+                subtasks['equalize'] = {k: group.get('gain', 0) for group in equalize['params'] for k in group['frequencies']}
+            
+            if compression:=find(body_dict['masteringOperations'], 'compression'):
+                subtasks['compression'] = compression['params']
+
+            if normalization:=find(body_dict['masteringOperations'], 'normalization'):
+                subtasks['normalization'] = normalization['params']['dbfs']
+    except Exception as e:
+        await stream.send_all(f'HTTP/1.0 400 Bad Request\r\n\r\nBad masteringOperations structure: {str(e)}\n'.encode('utf-8'))
+        return
+    
+    subtasks['final'] = {'callback': callback}
+    
+    task = Task(subtasks, server.config)
     await server.task_manager.new_tasks_queue.put(task)
 
     await stream.send_all(f'HTTP/1.0 200 OK\r\n\r\n{task.id}\n'.encode('utf-8'))
@@ -29,10 +58,9 @@ async def startTask(server, stream, path_args: dict = {}, body: str = ''):
 async def getTaskInfo(server, stream, path_args: dict = {}, body: str = ''):
     server.logger.debug('Inside the "getTaskInfo" function')
     status = server.task_manager.get_task_status(path_args['id'])
-    # TODO: Добавить проверку ненулевого статуса. Если он None, то возвращать HTTP 404 Not found
 
     if status is None:
-        response = 'HTTP/1.0 404 Not Found\r\n\r\nTask Not Found\n'.encode('utf-8')
+        response = b'HTTP/1.0 404 Not Found\r\n\r\nTask Not Found\n'
     else:
         response = f'HTTP/1.0 200 OK\r\n\r\n{status}\n'.encode('utf-8')
     

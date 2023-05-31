@@ -19,11 +19,13 @@ class HttpServer:
 
 
     async def handleRequest(self, stream):
-        data = await stream.receive_some(1024)
-
-        self.logger.debug(f'Received data: {data}')
-
-        headers, body = data.decode('utf-8').split('\r\n\r\n', 1)
+        data = await stream.receive_some(2048)
+        
+        try:
+            headers, body = data.decode('utf-8').split('\r\n\r\n', 1)
+        except:
+            self.logger.error(f'Error while trying to decode the data')
+            return
 
         self.logger.debug(f'Headers: {headers}; Body: {body}')
 
@@ -47,8 +49,13 @@ class HttpServer:
                     break
             else:
                 self.logger.info(f'Start handling {method} {path} request')
-                await handler(self, stream, path_args, body)
+                try:
+                    await handler(self, stream, path_args, body)
+                except Exception as e:
+                    await stream.send_all(f'HTTP/1.0 500 Internal Server Error\r\n\r\nError: {str(e)}\n'.encode('utf-8'))
                 return
+
+            # TODO: Добавить возвращение HTTP 405
 
         self.logger.info(f'Unknown {method} {path} request')
         await stream.send_all(b'HTTP/1.0 404 Not Found\r\n\r\n')
