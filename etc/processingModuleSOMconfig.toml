@@ -1,7 +1,9 @@
 #   Online Mastering Service's Processing Module configuration file
 [MAIN]
-port = 8080
+port = 8000
+location = 'local' # Can be 'local' or 'remote'
+workspace = 'var/workspace'
 
 [LOG]
 file = './var/log/processingModuleSOM.log'
-level = 'DEBUG' # May be INFO, DEBUG or ERROR
+level = 'DEBUG' # Can be 'INFO', 'DEBUG' or 'ERROR'

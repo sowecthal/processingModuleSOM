@@ -9,7 +9,8 @@ from .task import Task
 
 
 @HttpServer.route('POST', '/startProc')
-async def start_task(server, stream, path_args: dict = {}, body: str = ''): 
+async def startTask(server, stream, path_args: dict = {}, body: str = ''):
+    server.logger.debug('Inside the "startTask" function')
     try:
         body_dict = json.loads(body)
     except json.JSONDecodeError:
@@ -17,28 +18,36 @@ async def start_task(server, stream, path_args: dict = {}, body: str = ''):
         return
     
     # TODO: Обрабатывать JSON, он хранится в переменной body_dict
-
-    task = Task(dict()) # TODO: Вместо пустого dict() - передавать словарь подзадач
+    subtasks = {}
+    task = Task(subtasks, server.config, server.logger) # TODO: Вместо пустого dict() - передавать словарь подзадач
     await server.task_manager.new_tasks_queue.put(task)
 
     await stream.send_all(f'HTTP/1.0 200 OK\r\n\r\n{task.id}\n'.encode('utf-8'))
 
 
 @HttpServer.route('GET', '/getProcInfo/{id}')
-async def get_task_info(server, stream, path_args: dict = {}, body: str = ''):
+async def getTaskInfo(server, stream, path_args: dict = {}, body: str = ''):
+    server.logger.debug('Inside the "getTaskInfo" function')
     status = server.task_manager.get_task_status(path_args['id'])
     # TODO: Добавить проверку ненулевого статуса. Если он None, то возвращать HTTP 404 Not found
-    await stream.send_all(f'HTTP/1.0 200 OK\r\n\r\nTask Status: {status}\n'.encode('utf-8'))
+
+    if status is None:
+        response = 'HTTP/1.0 404 Not Found\r\n\r\nTask Not Found\n'.encode('utf-8')
+    else:
+        response = f'HTTP/1.0 200 OK\r\n\r\n{status}\n'.encode('utf-8')
+    
+    await stream.send_all(response)
 
 
 class Core:
-    def __init__(self, config, logger):
-        self.task_manager = TaskManager() # TODO: Передавать внуть logger
-        self.server = HttpServer(self.task_manager, config, logger)
+    def __init__(self, config):
+        self.task_manager = TaskManager()
+        self.server = HttpServer(self.task_manager, config)
 
 
     async def run(self):
         async with trio.open_nursery() as nursery:
+            nursery.start_soon(self.task_manager.processTasks)
             nursery.start_soon(self.server.run)
-            nursery.start_soon(self.task_manager.process_tasks)
+            
 

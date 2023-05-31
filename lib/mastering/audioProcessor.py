@@ -64,7 +64,6 @@ def __workingInFormat(target_format):
 def equalizeFile(path: str, eq_dict: dict ): #test dictionary = {200: 10, 1000: -10, 5000: -10}
     rate, data = wavfile.read(path)
 
-    # If the file is stereo
     if len(data.shape) > 1 and data.shape[1] > 1:
         data_left = data[:, 0]
         data_right = data[:, 1]
@@ -76,7 +75,7 @@ def equalizeFile(path: str, eq_dict: dict ): #test dictionary = {200: 10, 1000: 
 
     for freq in eq_dict.keys():
         gain_db = eq_dict[freq]
-        gain = 10**(gain_db/20) # Convert from dB to linear
+        gain = 10**(gain_db/20)
 
         b, a = signal.butter(2, [0.9*freq, 1.1*freq], 'bandpass', fs=rate)
 
@@ -101,26 +100,21 @@ def equalizeFile(path: str, eq_dict: dict ): #test dictionary = {200: 10, 1000: 
 @__workingInFormat("wav")
 def compressFile(path: str, threshold = -20.0, ratio = 4.0, attack = 5.0, release = 50.0):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
-    print("RMS level before compression: ", input_signal.rms)
-
     output_signal = input_signal.compress_dynamic_range(threshold=threshold, ratio=ratio, attack=attack, release=release)
-    print("RMS level after compression: ", output_signal.rms)
-    
     output_signal.export(path.rsplit('.', 1)[0] + '_comp.'+ path.split('.')[-1])
 
     return path
 
 
-def normalizeFile(path: str, multiplier=None, dBFS=None):
+def normalizeFile(path: str, dBFS=None):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
     print("dBFS before normalization: ", round(input_signal.dBFS, 1))
 
-    if not (multiplier or dBFS):
+    if not dBFS:
         output_signal = effects.normalize(input_signal)
         print("dBFS after normalization: ", round(output_signal.dBFS, 1))
     else:
-        target_dBFS = dBFS if dBFS else round(input_signal.dBFS, 1) * multiplier
-        delta_dBFS = target_dBFS - input_signal.dBFS
+        delta_dBFS = dBFS - input_signal.dBFS
         output_signal = input_signal.apply_gain(delta_dBFS)
         print("dBFS after normalization: ", round(output_signal.dBFS, 1))
 

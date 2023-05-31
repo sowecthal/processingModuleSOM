@@ -1,3 +1,4 @@
+import logging
 import trio
 import os
 
@@ -23,19 +24,21 @@ class Queue:
 
 
 class TaskManager:
-    def __init__(self): # TODO: Не забыть про логгер
+    def __init__(self, logger=logging.getLogger('TASK_MANAGER')):
         self.tasks = dict()
+        self.logger = logger
         self.new_tasks_queue = Queue()
 
 
-    async def process_tasks(self):
+    async def processTasks(self):
+        self.logger.info('Task manager is running')
         while True:
             task = await self.new_tasks_queue.get()
             self.tasks[task.id] = task
             trio.lowlevel.spawn_system_task(task.run)
 
 
-    def get_task_status(self, task_id: str) -> str:
+    def getTaskStatus(self, task_id: str) -> str:
         if task_id in self.tasks:
             return self.tasks[task_id].status
 

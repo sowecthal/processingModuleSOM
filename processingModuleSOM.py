@@ -18,7 +18,7 @@ def main():
     logging.basicConfig(level=config['LOG']['level'], format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     logging.info('Start processing module')
 
-    new_core = core.Core(config, logging) 
+    new_core = core.Core(config) 
     trio.run(new_core.run)
 
 if __name__ == '__main__':
