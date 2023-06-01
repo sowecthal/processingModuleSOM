@@ -1,4 +1,5 @@
 import logging
+import shutil
 import trio
 import uuid
 import os
@@ -18,12 +19,49 @@ class Task:
         self.logger.info('Schedule: '+ (', '.join(self.subtasks.keys())))
 
 
-    async def downloadSubtask(self):
+    async def copyFileInWorkspace(self, src: str, suffix: str = '') -> bool:
+        try:
+            ext = src.split('.')[-1]
+            dst = os.path.join(self.workspace, f'{self.id}_{suffix}' + '.' + ext)
+            await trio.to_thread.run_sync(shutil.copy2, src, dst)
+            return True
+        except:
+            return False
+
+
+    async def downloadSubtask(self) -> (bool, str):
         # TODO: В зависимости от параметра self.config['MAIN']['location'] 
         # копировать или скачивать файл(-ы) из subtasks["download"]. Файлы называть
         # <self.id>_targ.<ext> и <self.id>_ref.<ext>.
-        pass
 
+        location = self.config['MAIN']['location']
+        targ = self.subtasks['download'].get('target')
+        ref = self.subtasks['download'].get('reference')
+
+
+        if location == 'remote':
+            if targ:
+                # Синхронные функции можно заворачивать в await trio.to_thread.run_sync(func, *args)
+                pass
+
+            if ref:
+                # Синхронные функции можно заворачивать в await trio.to_thread.run_sync(func, *args)
+                pass
+
+        elif location == 'local':  
+            if targ:
+                targ_copy_ok = await self.copyFileInWorkspace(targ, 'targ')
+
+            if ref:
+                ref_copy_ok = await self.copyFileInWorkspace(ref, 'ref')
+
+            if not targ_copy_ok or not ref_copy_ok:
+                return False, 'Error while copying file'
+        else:
+            return False, 'Unknown "location" value'
+        
+        return True, ''
+        
 
     async def finalSubtask(self):
         # TODO: Вызывать callback URL
