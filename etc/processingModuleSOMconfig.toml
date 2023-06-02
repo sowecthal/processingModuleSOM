@@ -1,7 +1,7 @@
 #   Online Mastering Service's Processing Module configuration file
 [MAIN]
 port = 8000
-location = 'local' # Can be 'local' or 'remote'
+location = 'remote' # Can be 'local' or 'remote'
 workspace = 'var/workspace'
 
 [LOG]

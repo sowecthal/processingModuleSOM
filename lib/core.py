@@ -13,8 +13,8 @@ async def startTask(server, stream, path_args: dict = {}, body: str = ''):
     server.logger.debug('Inside the "startTask" function')
     try:
         body_dict = json.loads(body)
-    except json.JSONDecodeError:
-        await stream.send_all(b'HTTP/1.0 400 Bad Request\r\n\r\nJSON load error\n')
+    except json.JSONDecodeError as e:
+        await stream.send_all(f'HTTP/1.0 400 Bad Request\r\n\r\nJSON load error: {e}\n'.encode('utf-8'))
         return
     
     subtasks = dict()
@@ -65,6 +65,13 @@ async def getTaskInfo(server, stream, path_args: dict = {}, body: str = ''):
         response = f'HTTP/1.0 200 OK\r\n\r\n{status}\n'.encode('utf-8')
     
     await stream.send_all(response)
+
+
+@HttpServer.route('POST', '/test/callback')
+async def testCallback(server, stream, path_args: dict = {}, body: str = ''):
+    server.logger.debug('Inside the "testCallback" function')
+    server.logger.debug(f'Received body: {body}')
+    await stream.send_all(b'HTTP/1.0 200 OK\r\n\r\n')
 
 
 class Core:

@@ -27,7 +27,7 @@ class HttpServer:
             self.logger.error(f'Error while trying to decode the data')
             return
 
-        self.logger.debug(f'Headers: {headers}; Body: {body}')
+        #self.logger.debug(f'Headers: {headers}; Body: {body}')
 
         method, path, _ = headers.split('\r\n')[0].split(' ', 2)
         path_splitted = path.split('/')[1:]
