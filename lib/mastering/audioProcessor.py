@@ -4,8 +4,8 @@ from scipy import signal
 import soundfile as sf
 import numpy as np
 
-import validator
-import audioProcessorUtils as apu
+from . import validator
+from . import audioProcessorUtils as apu
 
 
 convertion_funcs = {
@@ -47,21 +47,24 @@ def __workingInFormat(target_format):
     def prepareFileForFunction(func):
         def preparator(*args):
             path = args[0]
-            converted_path = path
-            if path.split('.')[-1] != target_format:
-                converted_path = __convertFile(path, target_format)
+            current_format = path.split('.')[-1]
+            convertion_is_required = True if current_format != target_format else False
+
+            if convertion_is_required:
+                path = __convertFile(path, target_format)
             
-            returned_path = func(converted_path, *args[1:])
+            path = func(path, *args[1:])
+
+            if convertion_is_required:
+                path = __convertFile(path, current_format)
             
-            if returned_path != path:
-                __convertFile(returned_path, path.split('.')[-1])
-                
+            return path
         return preparator
     return prepareFileForFunction
 
 
 @__workingInFormat("wav")
-def equalizeFile(path: str, eq_dict: dict ): #test dictionary = {200: 10, 1000: -10, 5000: -10}
+def equalizeFile(path: str, eq_dict: dict): #test dictionary = {200: 10, 1000: -10, 5000: -10}
     rate, data = wavfile.read(path)
 
     if len(data.shape) > 1 and data.shape[1] > 1:
@@ -92,9 +95,9 @@ def equalizeFile(path: str, eq_dict: dict ): #test dictionary = {200: 10, 1000: 
 
     output_signal = np.int16(output_signal * 32767)
 
-    wavfile.write(path.rsplit('.', 1)[0] + '_eq.' + path.split('.')[-1], rate, output_signal)
-
-    return path
+    new_path = path.rsplit('.', 1)[0] + '_eq.' + path.split('.')[-1]
+    wavfile.write(new_path, rate, output_signal)
+    return new_path
 
 
 @__workingInFormat("wav")
