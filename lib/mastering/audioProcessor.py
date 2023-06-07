@@ -3,6 +3,7 @@ from scipy.io import wavfile
 from scipy import signal
 import soundfile as sf
 import numpy as np
+import logging
 
 from . import validator
 from . import audioProcessorUtils as apu
@@ -100,28 +101,29 @@ def equalizeFile(path: str, eq_dict: dict): #test dictionary = {200: 10, 1000: -
     return new_path
 
 
-@__workingInFormat("wav")
 def compressFile(path: str, *, threshold = -20.0, ratio = 4.0, attack = 5.0, release = 50.0):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
     output_signal = input_signal.compress_dynamic_range(threshold=threshold, ratio=ratio, attack=attack, release=release)
-    output_signal.export(path.rsplit('.', 1)[0] + '_comp.'+ path.split('.')[-1])
+    
+    new_path = path.rsplit('.', 1)[0] + '_comp.'+ path.split('.')[-1]
+    output_signal.export(new_path)
 
-    return path
+    return new_path
 
-@__workingInFormat("wav")
+
 def normalizeFile(path: str, dBFS=None):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
-    print("dBFS before normalization: ", round(input_signal.dBFS, 1))
-
+    
     if not dBFS:
         output_signal = effects.normalize(input_signal)
     else:
         delta_dBFS = dBFS - input_signal.dBFS
         output_signal = input_signal.apply_gain(delta_dBFS)
 
-    output_signal.export(path.rsplit('.', 1)[0] + '_norm.'+ path.split('.')[-1])
+    new_path = path.rsplit('.', 1)[0] + '_norm.'+ path.split('.')[-1]
+    output_signal.export(new_path)
     
-    return path
+    return new_path
 
 
 def byReference(targetTrack: str, referenceTrack: str):

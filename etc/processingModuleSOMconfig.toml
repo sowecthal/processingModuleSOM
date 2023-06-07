@@ -6,4 +6,4 @@ workspace = 'var\workspace'
 
 [LOG]
 file = '.var/log/processingModuleSOM.log'
-level = 'DEBUG' # Can be 'INFO', 'DEBUG' or 'ERROR'
+level = 'INFO' # Can be 'INFO', 'DEBUG' or 'ERROR'

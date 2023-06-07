@@ -55,7 +55,6 @@ class HttpServer:
                     await stream.send_all(f'HTTP/1.0 500 Internal Server Error\r\n\r\nError: {str(e)}\n'.encode('utf-8'))
                 return
 
-            # TODO: Добавить возвращение HTTP 405
 
         self.logger.info(f'Unknown {method} {path} request')
         await stream.send_all(b'HTTP/1.0 404 Not Found\r\n\r\n')

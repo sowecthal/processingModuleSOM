@@ -147,7 +147,6 @@ class Task:
             return False, f'Error in referencing: {str(e)}'
 
 
-
     async def runFinalSubtask(self, *args) -> (bool, str):
         path = args[0]
         self.logger.debug(f'Inside the "runFinalSubtask" with "{path}" path')
@@ -163,8 +162,8 @@ class Task:
 
         try:
             resp = None
-            with trio.move_on_after(5):
-                resp = await asks.post(self.subtasks['final']['callback'], data=data)
+            
+            resp = await asks.post(self.subtasks['final']['callback'], data=data)
 
             if resp and resp.status_code != 200:
                 return False, 'Unsuccessfull callback HTTP status code'
