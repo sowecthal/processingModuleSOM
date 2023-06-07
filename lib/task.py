@@ -6,6 +6,7 @@ import uuid
 import os
 import re
 
+from functools import partial
 from .mastering import equalizeFile, compressFile, normalizeFile, byReference
 
 class Task:
@@ -93,7 +94,6 @@ class Task:
         path = args[0]
         try:
             equalization_params = self.subtasks['equalize']
-            #sequalized_file_path = equalizeFile(path, equalization_params)
             equalized_file_path = await trio.to_thread.run_sync(equalizeFile, path, equalization_params)
             self.logger.debug(f'\tequalized_file_path: {equalized_file_path}')
             return True, equalized_file_path
@@ -107,8 +107,9 @@ class Task:
         path = args[0]
         try:
             compression_params = self.subtasks['compress']
-            compressed_file_path = compressFile(path, **compression_params)
-
+            compress_partial = partial(compressFile, path, **compression_params)
+            compressed_file_path = await trio.to_thread.run_sync(compress_partial)
+            self.logger.debug(f'\tcompressed_file_path: {compressed_file_path}')
             return True, compressed_file_path
         except Exception as e:
             return False, f'Error in compression: {str(e)}'
@@ -120,12 +121,31 @@ class Task:
         path = args[0]
         try:
             normalization_params = self.subtasks['normalize']
-            normalized_file_path = normalizeFile(path, **normalization_params)
-            
+            normalized_partial = partial(normalizeFile, path, **normalization_params)
+            normalized_file_path = await trio.to_thread.run_sync(normalized_partial)
+
+            self.logger.debug(f'\tnormalized_file_path: {normalized_file_path}')
             return True, normalized_file_path
         except Exception as e:
-            self.logger.error(f'Error in normalization: {str(e)}')
             return False, f'Error in normalization: {str(e)}'
+
+
+    async def runReferenceSubtask(self, *args) -> (bool, str):
+        self.logger.debug('Inside the "runReferenceSubtask" function')
+
+        target_path = args[0]
+        reference_path = self.reference_path
+
+        try:
+            referenced_partial = partial(byReference, target_path, reference_path)
+            referenced_file_path = await trio.to_thread.run_sync(referenced_partial)
+
+            self.logger.debug(f'\treferenced_file_path: {referenced_file_path}')
+            return True, referenced_file_path
+
+        except Exception as e:
+            return False, f'Error in referencing: {str(e)}'
+
 
 
     async def runFinalSubtask(self, *args) -> (bool, str):
@@ -189,13 +209,10 @@ class Task:
 
 # Rows should look like '<subtask_name>': ('<end_status>', <handler>)
 subtasks_info = {
-   'download': ('Downloaded', Task.runDownloadSubtask),
-   'equalize': ('Equalized', Task.runEqualizeSubtask),
-   'compression': ('Compressed', Task.runCompressionSubtask),
-   'normalize': ('Normalized', Task.runNormalizationSubtask),
-    # TODO: Добавить все подзадачи и их обработчики
-    # TODO: Oбработчики подзадач мастеринга, каждый возвращает два значения ok: bool и 
-    #       comment: str (Пояснение ошибки или путь результирующего файла, который 
-    #       необходимо передать в следующую функцию)
+    'download': ('Downloaded', Task.runDownloadSubtask),
+    'equalize': ('Equalized', Task.runEqualizeSubtask),
+    'compress': ('Compressed', Task.runCompressionSubtask),
+    'normalize': ('Normalized', Task.runNormalizationSubtask),
+    'reference': ('Referenced', Task.runReferenceSubtask),
     'final': ('Done', Task.runFinalSubtask)
 }

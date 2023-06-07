@@ -45,7 +45,7 @@ def __convertFile(path: str, output_format: str):
 
 def __workingInFormat(target_format):
     def prepareFileForFunction(func):
-        def preparator(*args):
+        def preparator(*args, **kwargs):
             path = args[0]
             current_format = path.split('.')[-1]
             convertion_is_required = True if current_format != target_format else False
@@ -53,7 +53,7 @@ def __workingInFormat(target_format):
             if convertion_is_required:
                 path = __convertFile(path, target_format)
             
-            path = func(path, *args[1:])
+            path = func(path, *args[1:], **kwargs)
 
             if convertion_is_required:
                 path = __convertFile(path, current_format)
@@ -108,28 +108,26 @@ def compressFile(path: str, *, threshold = -20.0, ratio = 4.0, attack = 5.0, rel
 
     return path
 
-
+@__workingInFormat("wav")
 def normalizeFile(path: str, dBFS=None):
     input_signal = AudioSegment.from_file(path, path.split('.')[-1])
     print("dBFS before normalization: ", round(input_signal.dBFS, 1))
 
     if not dBFS:
         output_signal = effects.normalize(input_signal)
-        print("dBFS after normalization: ", round(output_signal.dBFS, 1))
     else:
         delta_dBFS = dBFS - input_signal.dBFS
         output_signal = input_signal.apply_gain(delta_dBFS)
-        print("dBFS after normalization: ", round(output_signal.dBFS, 1))
 
     output_signal.export(path.rsplit('.', 1)[0] + '_norm.'+ path.split('.')[-1])
     
     return path
 
 
-def byReference(targ_path: str, ref_path: str):
+def byReference(targetTrack: str, referenceTrack: str):
     
-    targ_data, targ_rate  = sf.read(targ_path, always_2d=True)
-    ref_data, ref_rate = sf.read(ref_path, always_2d=True)
+    targ_data, targ_rate  = sf.read(targetTrack, always_2d=True)
+    ref_data, ref_rate = sf.read(referenceTrack, always_2d=True)
 
     targ_data, targ_rate = validator.check(targ_data, targ_rate)
     ref_data, ref_rate = validator.check(ref_data, ref_rate)
@@ -138,13 +136,9 @@ def byReference(targ_path: str, ref_path: str):
     targ_pieces_quantity, targ_piece_size = apu.calculatePiecesParams(targ_mid, targ_rate)
     targ_loudest_RMS, targ_mid_loudest_pieces, targ_side_loudest_pieces = apu.getLoudestMidSidePieces(targ_mid, targ_side, targ_pieces_quantity, targ_piece_size)
 
-    print(targ_pieces_quantity, targ_piece_size)
-
     ref_mid, ref_side = apu.convertFromLeftRightToMidSide(ref_data) 
     ref_pieces_quantity, ref_piece_size = apu.calculatePiecesParams(ref_mid, ref_rate)
     ref_loudest_RMS, ref_mid_loudest_pieces, ref_side_loudest_pieces = apu.getLoudestMidSidePieces(ref_mid, ref_side, ref_pieces_quantity, ref_piece_size)
-
-    print(ref_pieces_quantity, ref_piece_size)
 
     rms_coefficient, targ_mid, targ_side = apu.calculateCoefficientAndAmplify(targ_mid, targ_side, targ_loudest_RMS, ref_loudest_RMS)    
 
@@ -161,6 +155,6 @@ def byReference(targ_path: str, ref_path: str):
         targ_loudest_RMS, *_ = apu.getLoudestMidSidePieces(result_clipped, targ_side, targ_pieces_quantity, targ_piece_size)
         *_, result = apu.calculateCoefficientAndAmplify(result_mid, result, targ_loudest_RMS, ref_loudest_RMS)
 
-    sf.write(targ_path.rsplit('.', 1)[0] + '_mastered.' + targ_path.split('.')[-1], result, targ_rate)
+    sf.write(targetTrack.rsplit('.', 1)[0] + '_mastered.' + targetTrack.split('.')[-1], result, targ_rate)
 
 
