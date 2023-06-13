@@ -23,6 +23,7 @@ class Task:
         self.target_path = ''
         self.reference_path = ''
         self.last_path = ''
+        self.task_manager = None
 
         os.makedirs(self.workspace)
         self.logger.debug('Created directory')
@@ -204,6 +205,8 @@ class Task:
                 break
         else:
             self.logger.info(f'All subtasks completed successfully')
+        
+        self.task_manager.deleteTask(self.id)
 
 
 # Rows should look like '<subtask_name>': ('<end_status>', <handler>)

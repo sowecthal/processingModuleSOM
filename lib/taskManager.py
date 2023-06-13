@@ -35,6 +35,7 @@ class TaskManager:
         while True:
             task = await self.new_tasks_queue.get()
             self.tasks[task.id] = task
+            task.task_manager = self
             trio.lowlevel.spawn_system_task(task.run)
 
 
@@ -42,3 +43,11 @@ class TaskManager:
         if task_id in self.tasks:
             return self.tasks[task_id].status
 
+
+    def deleteTask(self, task_id: str):
+        if task_id in self.tasks:
+            status = self.tasks[task_id].status
+            if status == 'Error' or status == 'Done':
+                self.logger.debug(f'Deletion task with ID: {task_id}')
+                task = self.tasks.pop(task_id)
+                del task
