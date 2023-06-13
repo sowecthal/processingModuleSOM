@@ -14,7 +14,8 @@ async def startTask(server, stream, path_args: dict = {}, body: str = ''):
     try:
         body_dict = json.loads(body)
     except json.JSONDecodeError as e:
-        await stream.send_all(f'HTTP/1.0 400 Bad Request\r\n\r\nJSON load error: {e}\n'.encode('utf-8'))
+        server.logger.error(f'JSON load error: {str(e)}. Send 400 Bad Request')
+        await stream.send_all(f'HTTP/1.0 400 Bad Request\r\n\r\nJSON load error\n'.encode('utf-8'))
         return
     
     subtasks = dict()
@@ -23,6 +24,7 @@ async def startTask(server, stream, path_args: dict = {}, body: str = ''):
     callback = body_dict.get('callbackURL')
 
     if not subtasks['download']['target'] or not callback or 'masteringOperations' not in body_dict.keys():
+        server.logger.error(f'JSON is incorrect: {str(e)}. Send 400 Bad Request')
         await stream.send_all(b'HTTP/1.0 400 Bad Request\r\n\r\nJSON is incorrect\n')
         return
 
@@ -42,7 +44,8 @@ async def startTask(server, stream, path_args: dict = {}, body: str = ''):
             if normalization := find(body_dict['masteringOperations'], 'normalization'):
                 subtasks['normalize'] = normalization['params']
     except Exception as e:
-        await stream.send_all(f'HTTP/1.0 400 Bad Request\r\n\r\nBad masteringOperations structure: {str(e)}\n'.encode('utf-8'))
+        server.logger.error(f'Bad masteringOperations structure: {str(e)}. Send 400 Bad Request')
+        await stream.send_all(f'HTTP/1.0 400 Bad Request\r\n\r\nBad masteringOperations structure\n'.encode('utf-8'))
         return
 
     subtasks['final'] = {'callback': callback}
@@ -51,7 +54,7 @@ async def startTask(server, stream, path_args: dict = {}, body: str = ''):
     await server.task_manager.new_tasks_queue.put(task)
 
     await stream.send_all(f'HTTP/1.0 200 OK\r\n\r\n{task.id}\n'.encode('utf-8'))
-
+    server.logger.debug(f'End of the "startTask" function')
 
 
 @HttpServer.route('GET', '/getProcInfo/{id}')
@@ -60,11 +63,13 @@ async def getTaskInfo(server, stream, path_args: dict = {}, body: str = ''):
     status = server.task_manager.get_task_status(path_args['id'])
 
     if status is None:
+        server.logger.error(f'Task Not Found. Send 200 OK')
         response = b'HTTP/1.0 404 Not Found\r\n\r\nTask Not Found\n'
     else:
         response = f'HTTP/1.0 200 OK\r\n\r\n{status}\n'.encode('utf-8')
     
     await stream.send_all(response)
+    server.logger.debug(f'End of the "getTaskInfo" function')
 
 
 @HttpServer.route('POST', '/test/callback')
