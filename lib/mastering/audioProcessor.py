@@ -157,6 +157,10 @@ def byReference(targetTrack: str, referenceTrack: str):
         targ_loudest_RMS, *_ = apu.getLoudestMidSidePieces(result_clipped, targ_side, targ_pieces_quantity, targ_piece_size)
         *_, result = apu.calculateCoefficientAndAmplify(result_mid, result, targ_loudest_RMS, ref_loudest_RMS)
 
-    sf.write(targetTrack.rsplit('.', 1)[0] + '_mastered.' + targetTrack.split('.')[-1], result, targ_rate)
+
+    new_path = targetTrack.rsplit('.', 1)[0] + '_mastered.'+ targetTrack.split('.')[-1]
+    sf.write(new_path, result, targ_rate)
+
+    return new_path
 
 

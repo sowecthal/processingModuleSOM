@@ -150,7 +150,7 @@ class Task:
 
     async def runFinalSubtask(self, *args) -> (bool, str):
         path = args[0]
-        self.logger.debug(f'Inside the "runFinalSubtask" with "{path}" path')
+        self.logger.info(f'Inside the "runFinalSubtask" with "{path}" path')
         if self.location == 'remote':
             with open(path, 'rb') as f:
                 data = f.read()
